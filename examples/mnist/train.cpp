@@ -1,7 +1,7 @@
 /*
     Copyright (c) 2013, Taiga Nomi
     All rights reserved.
-    
+
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
     * Redistributions of source code must retain the above copyright
@@ -13,15 +13,15 @@
     names of its contributors may be used to endorse or promote products
     derived from this software without specific prior written permission.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY 
-    DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
-    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+    DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <iostream>
@@ -30,34 +30,18 @@
 using namespace tiny_cnn;
 using namespace tiny_cnn::activation;
 
-void construct_net(network<mse, adagrad>& nn) {
-    // connection table [Y.Lecun, 1998 Table.1]
-#define O true
-#define X false
-    static const bool tbl[] = {
-        O, X, X, X, O, O, O, X, X, O, O, O, O, X, O, O,
-        O, O, X, X, X, O, O, O, X, X, O, O, O, O, X, O,
-        O, O, O, X, X, X, O, O, O, X, X, O, X, O, O, O,
-        X, O, O, O, X, X, O, O, O, O, X, X, O, X, O, O,
-        X, X, O, O, O, X, X, O, O, O, O, X, O, O, X, O,
-        X, X, X, O, O, O, X, X, O, O, O, O, X, O, O, O
-    };
-#undef O
-#undef X
+#define HIDDEN_LAYER_SIZE 30
 
+void construct_net(network<cross_entropy, gradient_descent>& nn) {
     // construct nets
-    nn << convolutional_layer<tan_h>(32, 32, 5, 1, 6)  // C1, 1@32x32-in, 6@28x28-out
-       << average_pooling_layer<tan_h>(28, 28, 6, 2)   // S2, 6@28x28-in, 6@14x14-out
-       << convolutional_layer<tan_h>(14, 14, 5, 6, 16,
-            connection_table(tbl, 6, 16))              // C3, 6@14x14-in, 16@10x10-in
-       << average_pooling_layer<tan_h>(10, 10, 16, 2)  // S4, 16@10x10-in, 16@5x5-out
-       << convolutional_layer<tan_h>(5, 5, 5, 16, 120) // C5, 16@5x5-in, 120@1x1-out
-       << fully_connected_layer<tan_h>(120, 10);       // F6, 120-in, 10-out
+    nn << fully_connected_layer<sigmoid>(784, HIDDEN_LAYER_SIZE)       // F1, 120-in, 10-out*/
+       << fully_connected_layer<sigmoid>(30, HIDDEN_LAYER_SIZE);       // F2, 120-in, 10-out*/
+
 }
 
 void train_lenet(std::string data_dir_path) {
     // specify loss-function and learning strategy
-    network<mse, adagrad> nn;
+    network<cross_entropy, gradient_descent> nn;
 
     construct_net(nn);
 
@@ -70,20 +54,20 @@ void train_lenet(std::string data_dir_path) {
     parse_mnist_labels(data_dir_path+"/train-labels.idx1-ubyte",
                        &train_labels);
     parse_mnist_images(data_dir_path+"/train-images.idx3-ubyte",
-                       &train_images, -1.0, 1.0, 2, 2);
+                       &train_images, 0.0, 1.0, 0, 0);
     parse_mnist_labels(data_dir_path+"/t10k-labels.idx1-ubyte",
                        &test_labels);
     parse_mnist_images(data_dir_path+"/t10k-images.idx3-ubyte",
-                       &test_images, -1.0, 1.0, 2, 2);
+                       &test_images, 0.0, 1.0, 0, 0);
 
     std::cout << "start training" << std::endl;
 
     progress_display disp(train_images.size());
     timer t;
-    int minibatch_size = 10;
-    int num_epochs = 30;
+    int minibatch_size = 128;
+    int num_epochs = 4;
 
-    nn.optimizer().alpha *= std::sqrt(minibatch_size);
+    nn.optimizer().alpha = 0.1; // *= std::sqrt(minibatch_size);
 
     // create callback
     auto on_enumerate_epoch = [&](){
